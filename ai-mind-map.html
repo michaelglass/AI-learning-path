@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Ecosystem — Michael's Mind Map</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0d1117;
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+#graph-container { flex: 1; position: relative; overflow: hidden; }
+svg { width: 100%; height: 100%; }
+
+/* ── Panel ─────────────────────────────────────────────────────── */
+#panel {
+  width: 340px; min-width: 340px;
+  background: #161b27;
+  border-left: 1px solid #1e2d3d;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+#panel-hint {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 100%;
+  color: #3d4f61; font-size: 13px; text-align: center; gap: 10px; padding: 24px;
+}
+#panel-hint svg { opacity: 0.3; }
+#panel-content { padding: 24px; overflow-y: auto; flex: 1; display: none; }
+#panel-header { margin-bottom: 16px; }
+#panel-category {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.12em; margin-bottom: 6px;
+}
+#panel-name { font-size: 20px; font-weight: 700; line-height: 1.25; margin-bottom: 10px; }
+#panel-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600;
+}
+#panel-divider { height: 1px; background: #1e2d3d; margin: 16px 0; }
+#panel-summary { font-size: 14px; line-height: 1.7; color: #8ba3bd; margin-bottom: 16px; }
+
+.psec { margin-bottom: 18px; }
+.psec-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: #3d4f61; margin-bottom: 7px;
+}
+.psec-body { font-size: 13px; line-height: 1.65; color: #8ba3bd; }
+
+/* Rating control */
+#rating-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 18px;
+}
+.rating-label { font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: #3d4f61; flex-shrink: 0; }
+.rating-dots { display: flex; gap: 5px; }
+.rating-dot {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid #2a3f55; cursor: pointer;
+  background: transparent; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; color: transparent;
+}
+.rating-dot:hover { border-color: #4a6580; transform: scale(1.1); }
+.rating-dot.active { color: #0d1117; }
+.rating-caption {
+  font-size: 11px; color: #4a5568; margin-left: 4px; font-style: italic;
+}
+
+.qa-item {
+  background: #1a2332; border: 1px solid #1e2d3d;
+  border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;
+}
+.qa-q { font-size: 12px; font-weight: 600; color: #90cdf4; margin-bottom: 6px; line-height: 1.4; }
+.qa-a { font-size: 12px; color: #8ba3bd; line-height: 1.6; }
+
+.notes-box {
+  background: #1a2332; border: 1px solid #2a3f55;
+  border-left: 3px solid; border-radius: 6px;
+  padding: 10px 12px; font-size: 12px; line-height: 1.6; color: #8ba3bd;
+}
+
+/* ── Legend ─────────────────────────────────────────────────────── */
+#legend {
+  position: absolute; bottom: 20px; left: 20px;
+  background: rgba(22,27,39,0.94); border: 1px solid #1e2d3d;
+  border-radius: 10px; padding: 12px 16px; backdrop-filter: blur(8px);
+}
+.legend-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: #3d4f61; margin-bottom: 8px;
+}
+.legend-sep { height: 1px; background: #1e2d3d; margin: 9px 0 8px; }
+.legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 11px; color: #8ba3bd; }
+.legend-swatch { width: 13px; height: 13px; border-radius: 50%; border: 3px solid; flex-shrink: 0; }
+.legend-fill-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+.legend-fill-dot {
+  width: 13px; height: 13px; border-radius: 50%; border: 2px solid #3d5a6e; flex-shrink: 0;
+}
+
+/* Hint bar */
+#hint-bar {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  background: rgba(22,27,39,0.85); border: 1px solid #1e2d3d;
+  border-radius: 99px; padding: 5px 14px; font-size: 11px; color: #3d4f61;
+  pointer-events: none; white-space: nowrap; backdrop-filter: blur(6px);
+}
+
+/* D3 */
+.link { fill: none; stroke-opacity: 0.3; }
+.node { cursor: pointer; }
+.node text { pointer-events: none; user-select: none; }
+</style>
+</head>
+<body>
+
+<div id="graph-container">
+  <svg id="svg"></svg>
+  <div id="hint-bar">Click a node to explore &nbsp;·&nbsp; Click L1 cluster to expand/collapse &nbsp;·&nbsp; Drag to rearrange</div>
+  <div id="legend">
+    <div class="legend-title">Priority (outer ring)</div>
+    <div class="legend-row"><div class="legend-swatch" style="border-color:#22c55e;background:rgba(34,197,94,.12)"></div>Core — must know</div>
+    <div class="legend-row"><div class="legend-swatch" style="border-color:#f59e0b;background:rgba(245,158,11,.12)"></div>Should know</div>
+    <div class="legend-row"><div class="legend-swatch" style="border-color:#6366f1;background:rgba(99,102,241,.12)"></div>Optional / later</div>
+    <div class="legend-row"><div class="legend-swatch" style="border-color:#f97316;background:rgba(249,115,22,.12);border-style:dashed"></div>Watch — moving fast</div>
+    <div class="legend-sep"></div>
+    <div class="legend-title">Understanding (inner glow)</div>
+    <div class="legend-fill-row">
+      <div class="legend-fill-dot" style="background:rgba(100,100,120,0.1)"></div>
+      <div class="legend-fill-dot" style="background:rgba(99,102,241,0.2)"></div>
+      <div class="legend-fill-dot" style="background:rgba(99,102,241,0.38)"></div>
+      <div class="legend-fill-dot" style="background:rgba(99,102,241,0.55)"></div>
+      <div class="legend-fill-dot" style="background:rgba(99,102,241,0.72)"></div>
+      <div style="font-size:10px;color:#3d4f61;margin-left:3px">0 → 5</div>
+    </div>
+  </div>
+</div>
+
+<div id="panel">
+  <div id="panel-hint">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8ba3bd" stroke-width="1.5">
+      <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+    </svg>
+    <div>Click any node to<br>explore that topic</div>
+  </div>
+  <div id="panel-content">
+    <div id="panel-header">
+      <div id="panel-category"></div>
+      <div id="panel-name"></div>
+      <div id="panel-status"></div>
+    </div>
+    <div id="panel-divider"></div>
+    <div id="rating-row">
+      <div class="rating-label">Understanding</div>
+      <div class="rating-dots" id="rating-dots"></div>
+      <div class="rating-caption" id="rating-caption"></div>
+    </div>
+    <div id="panel-summary"></div>
+    <div class="psec" id="sec-why">
+      <div class="psec-title">Why you need this</div>
+      <div class="psec-body" id="panel-why"></div>
+    </div>
+    <div class="psec" id="sec-qa" style="display:none">
+      <div class="psec-title">Q &amp; A</div>
+      <div id="panel-qa"></div>
+    </div>
+    <div class="psec" id="sec-notes" style="display:none">
+      <div class="psec-title">Notes / Decisions</div>
+      <div id="panel-notes"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+
+const STATUS = {
+  "core":        { ring:"#22c55e", bg:"rgba(34,197,94,.12)",  label:"Core — must know",    text:"#4ade80" },
+  "should-know": { ring:"#f59e0b", bg:"rgba(245,158,11,.12)", label:"Should know",          text:"#fbbf24" },
+  "optional":    { ring:"#6366f1", bg:"rgba(99,102,241,.12)", label:"Optional / later",     text:"#818cf8" },
+  "watch":       { ring:"#f97316", bg:"rgba(249,115,22,.12)", label:"Watch — moving fast",  text:"#fb923c" },
+};
+
+const RATING_CAPTIONS = ["Not started","Vaguely familiar","Getting it","Solid grasp","Confident","Can explain it"];
+
+const CAT_COLOR = {
+  "Foundation Models":      "#6366f1",
+  "Core Concepts":          "#f59e0b",
+  "APIs & SDKs":            "#10b981",
+  "Agents":                 "#ec4899",
+  "Vector & Retrieval":     "#8b5cf6",
+  "Safety":                 "#ef4444",
+  "Evals":                  "#06b6d4",
+  "Fast Edge":              "#f97316",
+  "Augmented Coding":       "#14b8a6",
+};
+
+// Fill opacity hex per learned rating 0-5
+const FILL_OPX = ["0D","26","44","62","82","A8"];
+
+// ─── DATA ────────────────────────────────────────────────────────────────────
+
+const TREE = {
+  id:"root", name:"AI Ecosystem", level:0, status:"core", category:"root", learned:0,
+  summary:"The map of concepts, tools, and decisions you'll encounter building an AI-powered product.",
+  whyKnow:"You're building thellma — an AI-first app. Understanding the landscape means you can move fast and make confident decisions instead of guessing.",
+  questions:[], notes:"",
+  children:[
+
+  // ── FOUNDATION MODELS ────────────────────────────────────────────────────
+  { id:"fm", name:"Foundation Models", level:1, status:"core", category:"Foundation Models", learned:0,
+    summary:"Large pretrained models (LLMs) that power everything. Your first and most important product decision: which model do you use?",
+    whyKnow:"The brain of your product. Model choice affects capability, cost, speed, context size, and privacy. The competitive landscape shifts every few months.",
+    questions:[
+      { q:"Who are the main players right now (May 2026)?",
+        a:"Closed-source: Anthropic (Claude Opus 4, Sonnet 4), OpenAI (GPT-4o, o3, o4-mini), Google (Gemini 2.5 Pro/Flash). Open-weight: Meta Llama 4, Mistral, Qwen 2.5, DeepSeek V3. The gap between open and closed has narrowed dramatically." }
+    ],
+    notes:"You're running on claude-sonnet-4-6 right now via Cowork mode.",
+    children:[
+      { id:"fm-closed", name:"Closed APIs", level:2, status:"core", category:"Foundation Models", learned:0,
+        summary:"Models accessed via API — Anthropic, OpenAI, Google. You pay per token; they handle the infrastructure. Most capable models live here.",
+        whyKnow:"Fastest path to ship. No GPU headaches, best benchmarks, great tooling. Start here for thellma.", questions:[], notes:"" },
+      { id:"fm-open", name:"Open Weights", level:2, status:"should-know", category:"Foundation Models", learned:0,
+        summary:"Models like Llama 4 and Mistral where weights are public. Run via providers (Groq, Together AI, Fireworks) or self-host.",
+        whyKnow:"Relevant when you have privacy constraints, need cost predictability at scale, or want customization. Don't start here unless you have a strong reason.", questions:[], notes:"" },
+      { id:"fm-select", name:"Model Selection", level:2, status:"core", category:"Foundation Models", learned:0,
+        summary:"Choosing the right model for each task. Trade-offs: intelligence vs speed vs cost vs context vs multimodal. Most products use multiple models.",
+        whyKnow:"You'll likely want a powerful model for hard tasks and a cheap/fast model for simpler ones (e.g., classification, routing). Getting this right has big cost/UX implications.", questions:[], notes:"" },
+    ]
+  },
+
+  // ── CORE CONCEPTS ─────────────────────────────────────────────────────────
+  { id:"cc", name:"Core Concepts", level:1, status:"core", category:"Core Concepts", learned:0,
+    summary:"The vocabulary and mechanics of how LLMs work. Without this foundation, debugging your AI product feels like guessing.",
+    whyKnow:"The shared language of every team building AI. You need these to read docs, evaluate tools, and reason about behavior.",
+    questions:[], notes:"",
+    children:[
+      { id:"cc-tokens", name:"Tokens & Context", level:2, status:"core", category:"Core Concepts", learned:0,
+        summary:"Models read/write tokens (~¾ of a word). The context window is how much the model can 'see' at once — from 8K to 1M+ tokens depending on the model.",
+        whyKnow:"Context limits determine what you can send the model, how you chunk data, and what things cost. Every API call has a token budget.", questions:[], notes:"" },
+      { id:"cc-embeddings", name:"Embeddings", level:2, status:"core", category:"Core Concepts", learned:0,
+        summary:"Numerical vector representations of text. Similar concepts have similar vectors. The foundation of semantic search and RAG.",
+        whyKnow:"If thellma involves any search, retrieval, or persistent memory, you're going to work with embeddings.", questions:[], notes:"" },
+      { id:"cc-rag", name:"RAG", level:2, status:"core", category:"Core Concepts", learned:0,
+        summary:"Retrieval-Augmented Generation: retrieve relevant context from a knowledge base → inject into prompt → model answers. Reduces hallucination dramatically.",
+        whyKnow:"The dominant pattern for grounding AI responses in real data. Almost every serious AI product uses some form of RAG.", questions:[], notes:"" },
+      { id:"cc-prompting", name:"Prompt Engineering", level:2, status:"core", category:"Core Concepts", learned:0,
+        summary:"Crafting instructions that reliably produce good model outputs: system prompts, few-shot examples, chain-of-thought, structured output, XML tags.",
+        whyKnow:"Highest-leverage skill for AI product builders. Bad prompts = bad product even with a great model.", questions:[], notes:"" },
+      { id:"cc-finetune", name:"Fine-tuning", level:2, status:"optional", category:"Core Concepts", learned:0,
+        summary:"Training a base model further on your own data. More complex, expensive, and usually unnecessary if prompting can solve the problem.",
+        whyKnow:"Useful for style/tone or classification at scale. Probably not needed for thellma early on.", questions:[], notes:"" },
+      { id:"cc-evals", name:"Evals", level:2, status:"should-know", category:"Core Concepts", learned:0,
+        summary:"Systematic testing of model outputs. How do you know if a prompt or model change made things better or worse?",
+        whyKnow:"Without evals, you iterate blind. Start simple — even 20 hand-curated examples helps enormously.", questions:[], notes:"" },
+    ]
+  },
+
+  // ── APIs & SDKs ───────────────────────────────────────────────────────────
+  { id:"api", name:"APIs & SDKs", level:1, status:"core", category:"APIs & SDKs", learned:0,
+    summary:"The programmatic interfaces to foundation models. How you actually call a model from code.",
+    whyKnow:"Your day-to-day tool. Knowing the API surface deeply saves debugging time and unlocks advanced features.",
+    questions:[], notes:"",
+    children:[
+      { id:"api-anthropic", name:"Anthropic SDK", level:2, status:"core", category:"APIs & SDKs", learned:0,
+        summary:"Official Python and TypeScript SDKs for Claude. Key features: Messages API, streaming, tool use, vision, extended thinking, prompt caching.",
+        whyKnow:"If you're building with Claude, this is your main interface. The API is clean and well-documented.", questions:[], notes:"" },
+      { id:"api-openai-compat", name:"OpenAI-compatible", level:2, status:"should-know", category:"APIs & SDKs", learned:0,
+        summary:"Many providers implement the OpenAI API spec (Together, Groq, Mistral, etc.). Knowing the OpenAI SDK lets you swap models easily.",
+        whyKnow:"Useful for multi-provider strategies. Even if you use Claude, understanding the OpenAI spec helps you read most community docs.", questions:[], notes:"" },
+      { id:"api-structured", name:"Structured Output", level:2, status:"core", category:"APIs & SDKs", learned:0,
+        summary:"Getting the model to return valid JSON matching a schema — via tool_use/function calling, response_format, or prompt constraints.",
+        whyKnow:"Essential for most integrations. If thellma needs to extract data or trigger actions from model output, you need this.", questions:[], notes:"" },
+      { id:"api-streaming", name:"Streaming", level:2, status:"should-know", category:"APIs & SDKs", learned:0,
+        summary:"Getting model tokens as they're generated rather than waiting for the full response. Makes UIs feel dramatically more responsive.",
+        whyKnow:"Near-mandatory for user-facing features. Waiting 5 seconds for a full response before showing anything kills UX.", questions:[], notes:"" },
+    ]
+  },
+
+  // ── AGENTS ───────────────────────────────────────────────────────────────
+  { id:"ag", name:"Agents", level:1, status:"should-know", category:"Agents", learned:0,
+    summary:"Systems where the model takes multiple steps, calls tools, and makes decisions to complete a goal.",
+    whyKnow:"If thellma involves any automation, multi-step workflows, or AI that acts rather than just responds, you're in agent territory.",
+    questions:[], notes:"",
+    children:[
+      { id:"ag-tools", name:"Tool Use", level:2, status:"core", category:"Agents", learned:0,
+        summary:"Giving the model the ability to call functions (search, DB, APIs). The model decides when and how to call them. Also called function calling.",
+        whyKnow:"The building block of agents. Even simple AI features use tool use to ground responses in real data.", questions:[], notes:"" },
+      { id:"ag-mcp", name:"MCP", level:2, status:"watch", category:"Agents", learned:0,
+        summary:"Model Context Protocol — Anthropic's open standard for connecting AI to external tools and data. Think USB-C for AI integrations.",
+        whyKnow:"Fast-growing ecosystem. Claude Code, Cursor, and other AI tools support it. You're using it right now in Cowork.",
+        questions:[
+          { q:"Is MCP worth adopting in 2026?",
+            a:"Yes, with caveats. Adoption by Claude, Cursor, Windsurf and others makes the ecosystem viable. The spec is still evolving, but building MCP-compatible tools gives you distribution across AI clients. Good choice if you want thellma to expose data or actions to AI agents." }
+        ],
+        notes:"You're already using MCP — Cowork mode uses it to connect Claude to your calendar, email, Drive, and file system." },
+      { id:"ag-frameworks", name:"Agent Frameworks", level:2, status:"should-know", category:"Agents", learned:0,
+        summary:"Libraries like LangChain, LlamaIndex, LangGraph, and the Anthropic Agent SDK that provide abstractions for multi-step agent workflows.",
+        whyKnow:"They accelerate development but add abstraction layers. Many teams regret picking a heavy framework early.", questions:[], notes:"" },
+      { id:"ag-memory", name:"Agent Memory", level:2, status:"should-know", category:"Agents", learned:0,
+        summary:"How agents remember across turns and sessions: short-term (context window), long-term (vector store / DB), episodic (compressed summaries).",
+        whyKnow:"Memory architecture determines whether your AI feels coherent or goldfish-brained across sessions.", questions:[], notes:"" },
+    ]
+  },
+
+  // ── VECTOR & RETRIEVAL ───────────────────────────────────────────────────
+  { id:"vr", name:"Vector & Retrieval", level:1, status:"should-know", category:"Vector & Retrieval", learned:0,
+    summary:"Infrastructure for storing and searching embeddings — the memory backbone of RAG systems.",
+    whyKnow:"If thellma needs to find relevant information from any corpus (docs, user data, history), you need this.",
+    questions:[], notes:"",
+    children:[
+      { id:"vr-dbs", name:"Vector Databases", level:2, status:"should-know", category:"Vector & Retrieval", learned:0,
+        summary:"DBs optimized for storing and querying embedding vectors. Options: Pinecone, Qdrant, Weaviate, Chroma, pgvector (Postgres extension).",
+        whyKnow:"The storage layer for RAG. If you're already on Postgres, pgvector is the simplest starting point.", questions:[], notes:"" },
+      { id:"vr-embed-models", name:"Embedding Models", level:2, status:"should-know", category:"Vector & Retrieval", learned:0,
+        summary:"Models that convert text into vectors. Options: OpenAI text-embedding-3-large, Cohere Embed v3, open-source BGE or E5.",
+        whyKnow:"Your choice affects retrieval quality. Ideally aligns with your generation model ecosystem.", questions:[], notes:"" },
+      { id:"vr-chunking", name:"Chunking & Search", level:2, status:"optional", category:"Vector & Retrieval", learned:0,
+        summary:"How you split documents for embedding, and retrieval strategies: semantic search, hybrid search, HyDE, re-ranking.",
+        whyKnow:"Chunking strategy dramatically affects RAG quality. Don't over-engineer until you have real retrieval failure data.", questions:[], notes:"" },
+    ]
+  },
+
+  // ── SAFETY ────────────────────────────────────────────────────────────────
+  { id:"sf", name:"Safety & Guardrails", level:1, status:"should-know", category:"Safety", learned:0,
+    summary:"Protecting your product from misuse, unexpected outputs, and cost explosions.",
+    whyKnow:"Every shipped AI product gets probed or misused. Building guardrails in from the start is far cheaper than retrofitting.",
+    questions:[], notes:"",
+    children:[
+      { id:"sf-injection", name:"Prompt Injection", level:2, status:"should-know", category:"Safety", learned:0,
+        summary:"Attacks where user input hijacks your system prompt or makes the model do unintended things. The XSS of the LLM world.",
+        whyKnow:"If users can provide any input to your AI, you're potentially vulnerable. Worth implementing early.", questions:[], notes:"" },
+      { id:"sf-hallucination", name:"Hallucination", level:2, status:"should-know", category:"Safety", learned:0,
+        summary:"LLMs confidently state false things. Mitigation: RAG, citation requirements, structured verification, multiple-model voting.",
+        whyKnow:"The #1 trust killer in AI products. How you handle this determines whether users trust thellma.", questions:[], notes:"" },
+      { id:"sf-cost", name:"Cost Control", level:2, status:"should-know", category:"Safety", learned:0,
+        summary:"LLM API costs compound fast at scale. Strategies: prompt caching, model tiering, rate limiting, caching identical queries.",
+        whyKnow:"A large system prompt repeated thousands of times without caching will surprise your billing.", questions:[], notes:"" },
+    ]
+  },
+
+  // ── EVALS ─────────────────────────────────────────────────────────────────
+  { id:"ev", name:"Evals & Observability", level:1, status:"should-know", category:"Evals", learned:0,
+    summary:"How you know your AI product is working and getting better (or worse) over time.",
+    whyKnow:"Shipping AI without observability is flying blind. Evals let you iterate with confidence instead of vibes.",
+    questions:[], notes:"",
+    children:[
+      { id:"ev-tracing", name:"Tracing / Logging", level:2, status:"should-know", category:"Evals", learned:0,
+        summary:"Tools that capture every LLM call: prompt, response, latency, cost, tokens. Options: Langfuse (OSS), Braintrust, Helicone, Arize.",
+        whyKnow:"You need visibility into what your model is doing in production. Pick one early — retrofitting is painful.", questions:[], notes:"" },
+      { id:"ev-evals", name:"Eval Frameworks", level:2, status:"should-know", category:"Evals", learned:0,
+        summary:"Systematic ways to test model output quality. Human eval (accurate, slow), LLM-as-judge (scalable, biased), unit tests over structured output.",
+        whyKnow:"Without evals, you can't safely change prompts or upgrade models. Even 20 golden examples is enormously valuable.", questions:[], notes:"" },
+      { id:"ev-llmjudge", name:"LLM-as-Judge", level:2, status:"optional", category:"Evals", learned:0,
+        summary:"Using a model to evaluate outputs of another model. Fast and scalable but has known biases (prefers verbose responses, own outputs).",
+        whyKnow:"Practical for running evals at scale. Know the biases so you interpret results correctly.", questions:[], notes:"" },
+    ]
+  },
+
+  // ── FAST EDGE ─────────────────────────────────────────────────────────────
+  { id:"fe", name:"The Fast Edge", level:1, status:"watch", category:"Fast Edge", learned:0,
+    summary:"Things moving so fast that the picture looks different every few months. Watch, don't over-invest.",
+    whyKnow:"You need enough awareness to spot when something becomes relevant to thellma.",
+    questions:[], notes:"",
+    children:[
+      { id:"fe-reasoning", name:"Reasoning Models", level:2, status:"watch", category:"Fast Edge", learned:0,
+        summary:"Models that 'think before answering' — Claude extended thinking, OpenAI o3/o4, DeepSeek R1. Much better at hard tasks, much slower and pricier.",
+        whyKnow:"Useful for complex coding, analysis, and multi-step planning. Too slow/expensive for real-time user-facing features.", questions:[], notes:"" },
+      { id:"fe-multimodal", name:"Multimodal", level:2, status:"watch", category:"Fast Edge", learned:0,
+        summary:"Models handling text + images + audio + video. All frontier models now support vision. Voice is becoming production-viable.",
+        whyKnow:"If thellma has any visual or voice component, these capabilities are now mature enough to build on.", questions:[], notes:"" },
+      { id:"fe-context", name:"Long Context", level:2, status:"watch", category:"Fast Edge", learned:0,
+        summary:"Context windows have exploded: Gemini 2.5 at 1M tokens, others following. Changes the economics of RAG.",
+        whyKnow:"Large context changes product architecture decisions — many RAG use cases might be solved by 'just put it all in context.'", questions:[], notes:"" },
+      { id:"fe-agentic", name:"Agentic AI", level:2, status:"watch", category:"Fast Edge", learned:0,
+        summary:"AI taking extended action sequences autonomously: computer use, browser control, long-horizon tasks. Reliability is improving.",
+        whyKnow:"The direction the whole industry is moving. Worth understanding the architecture even if not production-ready for most cases.", questions:[], notes:"" },
+    ]
+  },
+
+  // ── AUGMENTED CODING PATTERNS ─────────────────────────────────────────────
+  { id:"acp", name:"Augmented Coding", level:1, status:"should-know", category:"Augmented Coding", learned:0,
+    summary:"Patterns, anti-patterns, and obstacles for working effectively with AI coding assistants. From lexler.github.io/augmented-coding-patterns — 51 patterns, 10 anti-patterns, 15 obstacles.",
+    whyKnow:"You're already building with AI assistants. Knowing these patterns will make you dramatically more effective — and help you avoid the traps that slow most people down.",
+    questions:[], notes:"Source: https://lexler.github.io/augmented-coding-patterns/ — seeded with the most relevant entries, expand as you explore.",
+    children:[
+      // OBSTACLES
+      { id:"acp-context-rot", name:"Context Rot", level:2, status:"should-know", category:"Augmented Coding", learned:0,
+        summary:"Obstacle: As a conversation grows, earlier context degrades — the model 'forgets' or de-emphasizes things you established early on. Long sessions produce worse results than fresh ones.",
+        whyKnow:"Explains why your AI coding sessions feel sharp at first and get sloppier as they go. Knowing this, you'll start fresh contexts more often and summarize key decisions upfront.",
+        questions:[], notes:"" },
+      { id:"acp-obedient-contractor", name:"Obedient Contractor", level:2, status:"should-know", category:"Augmented Coding", learned:0,
+        summary:"Obstacle: The AI does exactly what you say, not what you mean. It's a very capable contractor that won't push back or flag when your instructions lead somewhere bad.",
+        whyKnow:"Explains why you can get technically-correct-but-wrong output. The solution is to be precise in your intent, not just your instruction — and to ask the AI to sanity-check before executing.",
+        questions:[], notes:"" },
+      // ANTI-PATTERNS
+      { id:"acp-ai-slop", name:"AI Slop", level:2, status:"should-know", category:"Augmented Coding", learned:0,
+        summary:"Anti-pattern: Accepting low-quality AI output without critical review — verbose boilerplate, unnecessary complexity, or code that technically works but is wrong for the context.",
+        whyKnow:"The AI always produces something, and it always sounds confident. Learning to spot slop — and developing the taste to reject it — is a core skill.",
+        questions:[], notes:"" },
+      { id:"acp-flying-blind", name:"Flying Blind", level:2, status:"should-know", category:"Augmented Coding", learned:0,
+        summary:"Anti-pattern: Using AI output without understanding it. You ship code you can't explain, debug, or maintain. The AI becomes a black box.",
+        whyKnow:"If you can't explain what the AI produced, you can't debug it when it breaks — and it will break. Understanding > speed.",
+        questions:[], notes:"" },
+      { id:"acp-silent-misalignment", name:"Silent Misalignment", level:2, status:"should-know", category:"Augmented Coding", learned:0,
+        summary:"Anti-pattern: The AI appears to be doing the right thing but has subtly misunderstood the goal. Output looks correct on the surface but fails in non-obvious ways.",
+        whyKnow:"Harder to catch than obvious errors. Mitigation: Check Alignment pattern — periodically ask the AI to restate what it thinks you're trying to accomplish.",
+        questions:[], notes:"" },
+      // PATTERNS
+      { id:"acp-ground-rules", name:"Ground Rules", level:2, status:"should-know", category:"Augmented Coding", learned:0,
+        summary:"Pattern: Establish explicit constraints and preferences at the start of a session or in a persistent CLAUDE.md/rules file — coding style, what not to do, how to handle uncertainty.",
+        whyKnow:"Dramatically improves output consistency. The AI follows rules well when they're explicit. This is one of the highest-ROI things you can do.",
+        questions:[], notes:"" },
+      { id:"acp-chain-small-steps", name:"Chain of Small Steps", level:2, status:"should-know", category:"Augmented Coding", learned:0,
+        summary:"Pattern: Break complex tasks into small, verifiable increments. Don't ask the AI to build a whole feature — ask it to build one function, verify it, then continue.",
+        whyKnow:"AI quality degrades with task complexity. Small steps let you catch misalignment early and keep context clean.",
+        questions:[], notes:"" },
+      { id:"acp-feedback-loop", name:"Feedback Loop", level:2, status:"should-know", category:"Augmented Coding", learned:0,
+        summary:"Pattern: Intentionally iterate with the AI — show it output, explain what's wrong, let it revise. Don't just accept the first result.",
+        whyKnow:"First outputs are drafts. The AI responds very well to specific feedback. Three rounds of feedback often gets you from 60% to 95% of what you want.",
+        questions:[], notes:"" },
+      { id:"acp-check-alignment", name:"Check Alignment", level:2, status:"optional", category:"Augmented Coding", learned:0,
+        summary:"Pattern: Periodically ask the AI to restate its understanding of the goal before continuing. Catches silent misalignment before it compounds.",
+        whyKnow:"Simple but powerful. 'Before you continue — what do you think we're trying to accomplish here?' catches more errors than you'd expect.",
+        questions:[], notes:"" },
+      { id:"acp-knowledge-doc", name:"Knowledge Document", level:2, status:"optional", category:"Augmented Coding", learned:0,
+        summary:"Pattern: Maintain a living document that captures key project context — architecture decisions, patterns to follow, things to avoid. Feed it to the AI at the start of relevant sessions.",
+        whyKnow:"Solves context rot at the project level. The AI can only know what's in context — give it the important stuff consistently.",
+        questions:[], notes:"" },
+    ]
+  },
+
+]};  // end TREE
+
+// ─── FLATTEN ─────────────────────────────────────────────────────────────────
+
+function flatten(node, parentId = null) {
+  const me = { ...node, parentId, _childIds: (node.children||[]).map(c=>c.id) };
+  delete me.children;
+  const results = [me];
+  (node.children||[]).forEach(child => results.push(...flatten(child, node.id)));
+  return results;
+}
+
+const ALL_NODES = flatten(TREE);
+const NODE_MAP  = new Map(ALL_NODES.map(n=>[n.id,n]));
+
+// Learned ratings stored separately so they persist across re-renders
+const learnedMap = new Map(ALL_NODES.map(n=>[n.id, n.learned||0]));
+
+// Positions persist across renders
+const positions = new Map();
+
+// Which L1 nodes are expanded
+const expanded = new Set();
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+function nodeRadius(d) {
+  if (d.level===0) return 38;
+  if (d.level===1) return 22;
+  return 14;
+}
+
+function nodeColor(d) {
+  if (d.level===0) return "#e2e8f0";
+  return CAT_COLOR[d.category]||"#6366f1";
+}
+
+function statusRingColor(d) { return STATUS[d.status]?.ring||"#6366f1"; }
+
+function learnedFill(d) {
+  const l = learnedMap.get(d.id)||0;
+  if (d.level===0) return `rgba(226,232,240,${l*0.06+0.04})`;
+  const hex = FILL_OPX[l];
+  return nodeColor(d)+hex;
+}
+
+function visibleNodes() {
+  return ALL_NODES.filter(n => {
+    if (n.level===0||n.level===1) return true;
+    if (n.level===2 && expanded.has(n.parentId)) return true;
+    return false;
+  });
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+
+const svgEl   = d3.select("#svg");
+const gMain   = svgEl.append("g").attr("class","main");
+let sim, selected = null;
+
+const W = () => document.getElementById("graph-container").clientWidth;
+const H = () => document.getElementById("graph-container").clientHeight;
+
+// Zoom
+const zoom = d3.zoom().scaleExtent([0.2,3.5])
+  .on("zoom", e => gMain.attr("transform", e.transform));
+svgEl.call(zoom);
+svgEl.on("dblclick.zoom", null);
+
+function render() {
+  const nodes = visibleNodes().map(n => {
+    const pos = positions.get(n.id);
+    return { ...n, x: pos?.x??W()/2, y: pos?.y??H()/2, vx:0, vy:0 };
+  });
+  const nodeById = new Map(nodes.map(n=>[n.id,n]));
+
+  const links = nodes
+    .filter(n => n.parentId && nodeById.has(n.parentId))
+    .map(n => ({ source: nodeById.get(n.parentId), target: n }));
+
+  if (sim) sim.stop();
+
+  sim = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d=>d.id)
+      .distance(d => d.source.level===0 ? 175 : 115).strength(0.85))
+    .force("charge", d3.forceManyBody().strength(d =>
+      d.level===0 ? -1000 : d.level===1 ? -450 : -220))
+    .force("center", d3.forceCenter(W()/2, H()/2))
+    .force("collision", d3.forceCollide(d => nodeRadius(d)+24));
+
+  // ── Links ──
+  gMain.selectAll(".link-layer").remove();
+  const linkLayer = gMain.append("g").attr("class","link-layer");
+  const linkSel = linkLayer.selectAll("line").data(links).join("line")
+    .attr("class","link")
+    .attr("stroke", d => nodeColor(d.source))
+    .attr("stroke-width", d => d.source.level===0 ? 2 : 1.5);
+
+  // ── Nodes ──
+  gMain.selectAll(".node-layer").remove();
+  const nodeLayer = gMain.append("g").attr("class","node-layer");
+
+  const nodeSel = nodeLayer.selectAll(".node").data(nodes,d=>d.id).join("g")
+    .attr("class","node")
+    .call(d3.drag()
+      .on("start",(e,d)=>{ if(!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on("drag", (e,d)=>{ d.fx=e.x; d.fy=e.y; })
+      .on("end",  (e,d)=>{ if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; })
+    )
+    .on("click", (e,d) => {
+      e.stopPropagation();
+      if (d.level===1) {
+        if (expanded.has(d.id)) expanded.delete(d.id);
+        else expanded.add(d.id);
+      }
+      selected = d.id;
+      showPanel(d);
+      render();
+    });
+
+  // Selected glow
+  nodeSel.append("circle")
+    .attr("r", d=>nodeRadius(d)+12)
+    .attr("fill", d=>nodeColor(d))
+    .attr("opacity", d=>selected===d.id ? 0.13 : 0)
+    .style("pointer-events","none");
+
+  // Status ring — thick and visible
+  nodeSel.append("circle")
+    .attr("r", d=>nodeRadius(d)+5)
+    .attr("fill","none")
+    .attr("stroke", d => d.level===0 ? "#e2e8f0" : statusRingColor(d))
+    .attr("stroke-width", 4)
+    .attr("stroke-dasharray", d => d.status==="watch" ? "6,4" : "none")
+    .attr("opacity", 0.75)
+    .style("pointer-events","none");
+
+  // Main circle (learned-based fill)
+  nodeSel.append("circle")
+    .attr("r", nodeRadius)
+    .attr("fill", learnedFill)
+    .attr("stroke", nodeColor)
+    .attr("stroke-width", d=>d.level===0 ? 2.5 : 2);
+
+  // Q&A count badge in center
+  nodeSel.filter(d=>d.questions?.length>0)
+    .append("text")
+    .attr("text-anchor","middle").attr("dy","0.35em")
+    .attr("font-size", d=>d.level===0?13:10).attr("font-weight",700)
+    .attr("fill",d=>nodeColor(d)).attr("opacity",0.85)
+    .text(d=>d.questions.length);
+
+  // Expand indicator dot
+  nodeSel.filter(d=>d.level===1 && d._childIds.length>0)
+    .append("circle")
+    .attr("r", 5)
+    .attr("cx", d=>nodeRadius(d)-1).attr("cy", d=>-(nodeRadius(d)-1))
+    .attr("fill", d=>expanded.has(d.id) ? statusRingColor(d) : "#2a3f55")
+    .attr("stroke","#0d1117").attr("stroke-width",1.5)
+    .style("pointer-events","none");
+
+  // Labels
+  nodeSel.each(function(d) {
+    const g = d3.select(this);
+    const r = nodeRadius(d);
+    const words = d.name.split(" ");
+    const t = g.append("text")
+      .attr("text-anchor","middle")
+      .attr("font-size", d.level===0?13:d.level===1?11.5:10)
+      .attr("font-weight", d.level<=1?600:400)
+      .attr("fill", d.level===0?"#e2e8f0":nodeColor(d))
+      .attr("opacity",0.9);
+    if (words.length===1) {
+      t.append("tspan").attr("x",0).attr("dy",r+14).text(d.name);
+    } else if (words.length===2) {
+      t.append("tspan").attr("x",0).attr("dy",r+14).text(words[0]);
+      t.append("tspan").attr("x",0).attr("dy",13).text(words[1]);
+    } else {
+      const mid = Math.ceil(words.length/2);
+      t.append("tspan").attr("x",0).attr("dy",r+14).text(words.slice(0,mid).join(" "));
+      t.append("tspan").attr("x",0).attr("dy",13).text(words.slice(mid).join(" "));
+    }
+  });
+
+  // Tick
+  sim.on("tick", () => {
+    linkSel
+      .attr("x1",d=>d.source.x).attr("y1",d=>d.source.y)
+      .attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
+    nodeSel.attr("transform",d=>`translate(${d.x},${d.y})`);
+    nodes.forEach(n=>positions.set(n.id,{x:n.x,y:n.y}));
+  });
+}
+
+// ─── PANEL ───────────────────────────────────────────────────────────────────
+
+let currentPanelNode = null;
+
+function showPanel(d) {
+  currentPanelNode = d;
+  document.getElementById("panel-hint").style.display = "none";
+  document.getElementById("panel-content").style.display = "block";
+
+  const color = nodeColor(d);
+
+  const catEl = document.getElementById("panel-category");
+  catEl.textContent = d.level===0 ? "Overview" : d.category;
+  catEl.style.color = d.level===0 ? "#8ba3bd" : color;
+
+  const nameEl = document.getElementById("panel-name");
+  nameEl.textContent = d.name;
+  nameEl.style.color = d.level===0 ? "#e2e8f0" : color;
+
+  const s = STATUS[d.status]||STATUS["core"];
+  const stEl = document.getElementById("panel-status");
+  stEl.textContent = s.label;
+  stEl.style.background = s.bg;
+  stEl.style.color = s.text;
+  stEl.style.border = `1px solid ${s.ring}50`;
+
+  document.getElementById("panel-summary").textContent = d.summary;
+
+  // Rating
+  renderRating(d, color);
+
+  // Why
+  const whySec = document.getElementById("sec-why");
+  if (d.whyKnow) {
+    whySec.style.display = "block";
+    document.getElementById("panel-why").textContent = d.whyKnow;
+  } else { whySec.style.display = "none"; }
+
+  // Q&A
+  const qaSec = document.getElementById("sec-qa");
+  if (d.questions?.length) {
+    qaSec.style.display = "block";
+    document.getElementById("panel-qa").innerHTML = d.questions.map(qa=>
+      `<div class="qa-item"><div class="qa-q">Q: ${qa.q}</div><div class="qa-a">${qa.a}</div></div>`
+    ).join("");
+  } else { qaSec.style.display = "none"; }
+
+  // Notes
+  const notesSec = document.getElementById("sec-notes");
+  if (d.notes) {
+    notesSec.style.display = "block";
+    document.getElementById("panel-notes").innerHTML =
+      `<div class="notes-box" style="border-left-color:${color}">${d.notes}</div>`;
+  } else { notesSec.style.display = "none"; }
+}
+
+function renderRating(d, color) {
+  const current = learnedMap.get(d.id)||0;
+  const dots = document.getElementById("rating-dots");
+  const caption = document.getElementById("rating-caption");
+  caption.textContent = RATING_CAPTIONS[current];
+
+  dots.innerHTML = "";
+  for (let i=1; i<=5; i++) {
+    const dot = document.createElement("div");
+    dot.className = "rating-dot" + (i<=current?" active":"");
+    dot.style.borderColor = i<=current ? color : "#2a3f55";
+    dot.style.background  = i<=current ? color : "transparent";
+    dot.title = RATING_CAPTIONS[i];
+    dot.addEventListener("click", () => {
+      const newVal = i===current ? i-1 : i; // click same rating to go down
+      learnedMap.set(d.id, newVal);
+      renderRating(d, color);
+      render(); // update node fill
+    });
+    dots.appendChild(dot);
+  }
+}
+
+// Deselect on background click
+svgEl.on("click", () => {
+  selected = null;
+  document.getElementById("panel-hint").style.display = "flex";
+  document.getElementById("panel-content").style.display = "none";
+  render();
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+render();
+window.addEventListener("resize", ()=>render());
+</script>
+</body>
+</html>
